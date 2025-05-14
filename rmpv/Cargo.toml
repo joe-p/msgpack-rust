@@ -13,15 +13,19 @@ edition = "2021"
 rust-version = "1.70"
 
 [features]
+default = ["std"]
+std = ["rmp/std"]
 with-serde = ["serde", "serde_bytes"]
 
 [dependencies]
 serde_bytes = { version = "0.11.5", optional = true }
-rmp = { version = "0.8.14", path = "../rmp" }
+rmp = { version = "0.8.14", path = "../rmp", default-features = false }
 serde = { version = "1.0.197", optional = true }
 
 [dev-dependencies]
-quickcheck = "1.0.2"
+quickcheck = { version = "1.0.2" }
+rmp = { version = "0.8.14", path = "../rmp", features = ["std"] }
+
 
 [package.metadata.release]
 tag-prefix = "{{crate_name}}/"

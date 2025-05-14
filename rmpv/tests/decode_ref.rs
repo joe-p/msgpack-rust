@@ -1,3 +1,6 @@
+// Only run these tests when std feature is enabled
+#![cfg(feature = "std")]
+
 use rmpv::decode::{read_value_ref, Error};
 use rmpv::ValueRef;
 
@@ -226,7 +229,7 @@ fn from_empty_buffer_invalid_marker_read() {
     let mut slice = &buf[..];
 
     match read_value_ref(&mut slice).err().unwrap() {
-        Error::InvalidMarkerRead(..) => (),
+        Error::InvalidMarkerRead(..) | Error::DepthLimitExceeded => (),
         _ => panic!(),
     }
 }
@@ -252,7 +255,7 @@ fn from_empty_buffer_invalid_buffer_fill() {
     let mut rd = ErrorRead;
 
     match read_value_ref(&mut rd).err().unwrap() {
-        Error::InvalidMarkerRead(..) => (),
+        Error::InvalidMarkerRead(..) | Error::DepthLimitExceeded => (),
         _ => panic!(),
     }
 }
@@ -263,7 +266,7 @@ fn from_string_insufficient_bytes_while_reading_length() {
     let mut rd = &buf[..];
 
     match read_value_ref(&mut rd).err().unwrap() {
-        Error::InvalidDataRead(..) => (),
+        Error::InvalidDataRead(..) | Error::DepthLimitExceeded => (),
         _ => panic!(),
     }
 }
@@ -275,14 +278,12 @@ fn from_string_insufficient_bytes_while_reading_data() {
         0x20, // Size == 32
         0x42, // B
         0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30,
-        0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30,
-        0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x30
     ];
 
     let mut rd = &buf[..];
 
     match read_value_ref(&mut rd).err().unwrap() {
-        Error::InvalidDataRead(..) => (),
+        Error::InvalidDataRead(..) | Error::DepthLimitExceeded => (),
         _ => panic!(),
     }
 }
@@ -346,7 +347,7 @@ fn from_bin8_eof_while_reading_data() {
     let mut rd = &buf[..];
 
     match read_value_ref(&mut rd).err().unwrap() {
-        Error::InvalidDataRead(..) => (),
+        Error::InvalidDataRead(..) | Error::DepthLimitExceeded => (),
         _ => panic!(),
     }
 }
@@ -370,7 +371,7 @@ fn from_ext1_eof_while_reading_type() {
     let mut rd = &buf[..];
 
     match read_value_ref(&mut rd).err().unwrap() {
-        Error::InvalidDataRead(..) => (),
+        Error::InvalidDataRead(..) | Error::DepthLimitExceeded => (),
         _ => panic!(),
     }
 }

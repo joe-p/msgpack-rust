@@ -1,3 +1,6 @@
+// Only run these tests when std feature is enabled
+#![cfg(feature = "std")]
+
 use rmpv::decode::{read_value, Error};
 use rmpv::Value;
 

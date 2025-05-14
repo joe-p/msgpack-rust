@@ -1,65 +1,130 @@
 # Change Log
-All notable changes to this project will be documented in this file.
-This project adheres to [Semantic Versioning](http://semver.org/).
+
+All user-facing changes to this project are documented in this file. The format is based on [Keep a Changelog](https://keepachangelog.com/).
+
+Versions marked with "YANKED" (`~~~`) are considered unsuitable for public use.
 
 ## Unreleased
-## 0.4.1 - 2017-06-27
+
+## 1.4.0 - TBD
+
 ### Added
-- Add `as_ref()` to `Value` and `Utf8String` (#139).
+- Add `no_std` support by making the `std` feature optional
+- New default features: `std` (can be disabled for `no_std` environments)
+- Implement `RmpRead` and `RmpWrite` trait usage from rmp crate
+- Updated examples to demonstrate usage in both std and no_std environments
 
 ### Changed
-- (Breaking) Serialize newtype structs by serializing its inner type without wrapping into a tuple. (#146).
+- The `Error` type in decode module is now parameterized by the reader's error type
 
-## 0.4.0 - 2017-04-24
-### Added
-- Implement `Deserialize` for `ValueRef<'de>`.
-- Implement `Deserializer` for `ValueRef<'de>`.
-- Implement `Deserializer` for `&'de ValueRef<'de>`.
-- Zero-copy deserialization from `ValueRef`.
+## 1.3.0 - 2023-08-14
 
 ### Changed
-- Adapt with serde 1.0.
+- Make `Integer` `Copy` and add convenience methods for extracting the value
+- Make generic over more integral types
+- Update dependencies
 
-## 0.3.4 - 2017-03-26
 ### Fixed
-- Fix compilation on rustc 1.13.
+- Fix clippy warnings
 
-## 0.3.3 - 2017-03-26
-### Changed
-- Enum deserializer can now deserialize newtype variants with more than one element nested.
-
-## 0.3.2 - 2017-03-13
-### Fixed
-- Fixed double-quoting for strings when formatting a `ValueRef` using `Display` trait.
-
-## 0.3.1 - 2017-03-11
-### Added
-- Implement `From<rmpv::decode::Error>` for `std::io::Error`.
-
-## 0.3.0 - 2017-03-09
-### Added
-- Implement `Deserializer` and `Serializer` for `Value`.
-- Add `kind()` method for `rmpv::decode::Error`.
-- Implement `Error` and `Display` traits for `rmpv::decode::Error`.
-- Implement `From` trait for `Value` and `ValueRef` from all integral types, strings, slices and other more.
+## 1.2.0 - 2023-03-04
 
 ### Changed
-- Reserved markers are now decoded as nil instead of raising `Error::TypeMismatch`.
-- Integer representation for `Value` and `ValueRef` has been changed and hidden from the user to be able to fully match the spec and to fix round-trip cases.
-- Invalid UTF-8 strings can now be properly decoded into `Value` and `ValueRef` to match the spec. An untouched bytes can also be returned on demand as like as `Utf8Error` with description where invalid byte-sequence happened.
-- Error enums for decoding `Value` and `ValueRef` has been merged into the single one, which is located at `rmpv::decode::Error`.
+- Bump `rmp` to `0.8.12`
+
+## 1.1.0 - 2022-11-13
+
+### Changed
+- Bump `rmp-serde` to `1.1.0`
+- Bump MSRV to `1.58.0`
+
+## 1.0.0 - 2022-06-24
+
+### Changed
+- Update all deps to 1.0
 
 ### Removed
-- Remove `TypeMismatch` variant from `value::decode::Error`, because there is no way to obtain it.
-- Remove `FromUtf8Error` variant from `value::decode::Error`, because there invalid UTF-8 sequences are now supported.
+- Remove deprecated `MSGPACK_EXT_STRING`
 
-## 0.2.0 - 2017-02-09
-### Added
-- `Serde` 0.9 support.
-- `ValueRef` can now be displayed.
-- `ValueRef` can be indexed using special `index(..)` method. Implementing `Index` trait is not possible due to conflicting signature - `ValueRef` requires explicit lifetime.
-- It's now possible to obtain `ErrorKind` for Errors.
+## 0.5.1 - 2022-05-15
 
-## 0.1.0 - 2017-01-05
+### Fixed
+- Mitigate overflow from overallocating memory in valueref functions
+
+## 0.5.0 - 2020-10-27
+
+### Changed
+- Update deps
+
 ### Removed
-- Value now saves integer and floating point numbers directly without intermediate `Integer` and `Float` enums. As a result, they were removed.
+- Deprecated functions removed:
+  - `rmpv::ext::from_value`
+  - `rmpv::ext::to_value`
+
+## 0.4.7 - 2020-10-05
+
+### Fixed
+- More consistent MessagePack ext (de)serialization round-trip
+
+## 0.4.6 - 2020-08-13
+
+### Added
+- Added `PartialEq` implementation between `Value` and `ValueRef`
+
+## 0.4.5 - 2020-05-22
+
+### Fixed
+- Fixed exponentially large memory use in array & map deserialization
+
+## 0.4.4 - 2020-01-02
+
+### Added
+- Added `#[inline]` to `read_value` and `read_value_ref`
+
+## 0.4.3 - 2019-09-30
+
+### Added
+- Added `Option<T>` conversions for `Value`
+
+## 0.4.2 - 2019-05-16
+
+### Changed
+- Improved performance when checking types in `ValueRef::as_*` methods
+
+## 0.4.1 - 2019-01-24
+
+### Added
+- Add `Display` implementation for `ValueRef`
+
+## 0.4.0 - 2019-01-20
+
+### Added
+- Added error types
+- Added `From<f32>` and `TryFrom<Value>` for numeric types
+- Added depth checking to limit deeply nested structure parsing
+
+## 0.3.2 - 2017-09-06
+
+### Changed
+- Removed generic args from `as_xxx` methods
+
+## 0.3.1 - 2017-08-13
+
+### Changed
+- Improved performance for `as_xxx` methods
+
+## 0.3.0 - 2017-04-26
+
+### Added
+- Implemented `FromIterator` for `Value`
+- Added support for deserializing large binary/string/array/map with `read_value_ref`
+
+## 0.2.0 - 2017-01-05
+
+### Changed
+- Refactored the API (finally)
+
+## 0.1.0 - 2016-07-31
+
+### Added
+- Initial release

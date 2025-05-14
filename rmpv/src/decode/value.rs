@@ -1,5 +1,14 @@
+#[cfg(feature = "std")]
 use std::cmp::min;
+#[cfg(not(feature = "std"))]
+use core::cmp::min;
+
+#[cfg(feature = "std")]
 use std::io::{self, Read};
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+#[cfg(not(feature = "std"))]
+use alloc::string::String;
 
 use rmp::decode::{read_marker, RmpRead};
 use rmp::Marker;
@@ -10,7 +19,22 @@ use crate::{Utf8String, Value};
 // See https://github.com/3Hren/msgpack-rust/issues/151
 const PREALLOC_MAX: usize = 64 * 1024; // 64 KiB
 
-fn read_array_data<R: Read>(rd: &mut R, mut len: usize, depth: u16) -> Result<Vec<Value>, Error> {
+// Make these functions available regardless of feature flags
+#[cfg(not(feature = "std"))]
+pub fn read_value<R>(rd: &mut R) -> Result<Value, Error<R::Error>>
+    where R: RmpRead
+{
+    read_value_inner(rd, super::MAX_DEPTH as _)
+}
+
+#[cfg(not(feature = "std"))]
+pub fn read_value_with_max_depth<R>(rd: &mut R, max_depth: usize) -> Result<Value, Error<R::Error>>
+    where R: RmpRead
+{
+    read_value_inner(rd, max_depth.min(u16::MAX as usize) as u16)
+}
+
+fn read_array_data<R: RmpRead>(rd: &mut R, mut len: usize, depth: u16) -> Result<Vec<Value>, Error<R::Error>> {
     let depth = super::decrement_depth(depth)?;
 
     // Note: Do not preallocate a Vec of size `len`.
@@ -25,7 +49,7 @@ fn read_array_data<R: Read>(rd: &mut R, mut len: usize, depth: u16) -> Result<Ve
     Ok(vec)
 }
 
-fn read_map_data<R: Read>(rd: &mut R, mut len: usize, depth: u16) -> Result<Vec<(Value, Value)>, Error> {
+fn read_map_data<R: RmpRead>(rd: &mut R, mut len: usize, depth: u16) -> Result<Vec<(Value, Value)>, Error<R::Error>> {
     let depth = super::decrement_depth(depth)?;
 
     // Note: Do not preallocate a Vec of size `len`.
@@ -40,7 +64,7 @@ fn read_map_data<R: Read>(rd: &mut R, mut len: usize, depth: u16) -> Result<Vec<
     Ok(vec)
 }
 
-fn read_str_data<R: Read>(rd: &mut R, len: usize, depth: u16) -> Result<Utf8String, Error> {
+fn read_str_data<R: RmpRead>(rd: &mut R, len: usize, depth: u16) -> Result<Utf8String, Error<R::Error>> {
     let depth = super::decrement_depth(depth)?;
 
     match String::from_utf8(read_bin_data(rd, len, depth)?) {
@@ -55,22 +79,31 @@ fn read_str_data<R: Read>(rd: &mut R, len: usize, depth: u16) -> Result<Utf8Stri
     }
 }
 
-fn read_bin_data<R: Read>(rd: &mut R, len: usize, depth: u16) -> Result<Vec<u8>, Error> {
+fn read_bin_data<R: RmpRead>(rd: &mut R, len: usize, depth: u16) -> Result<Vec<u8>, Error<R::Error>> {
     let _depth = super::decrement_depth(depth)?;
 
-    let mut buf = Vec::with_capacity(min(len, PREALLOC_MAX));
-    let bytes_read = rd.take(len as u64).read_to_end(&mut buf).map_err(Error::InvalidDataRead)?;
-    if bytes_read != len {
-        return Err(Error::InvalidDataRead(io::Error::new(
-            io::ErrorKind::UnexpectedEof,
-            format!("Expected {len} bytes, read {bytes_read} bytes"),
-        )));
+    #[cfg(feature = "std")]
+    {
+        let mut buf = Vec::with_capacity(min(len, PREALLOC_MAX));
+        if len > 0 {
+            buf.resize(len, 0);
+            rd.read_exact_buf(&mut buf).map_err(Error::InvalidDataRead)?;
+        }
+        Ok(buf)
     }
-
-    Ok(buf)
+    
+    #[cfg(not(feature = "std"))]
+    {
+        let mut buf = alloc::vec::Vec::with_capacity(min(len, PREALLOC_MAX));
+        if len > 0 {
+            buf.resize(len, 0);
+            rd.read_exact_buf(&mut buf).map_err(Error::InvalidDataRead)?;
+        }
+        Ok(buf)
+    }
 }
 
-fn read_ext_body<R: Read>(rd: &mut R, len: usize, depth: u16) -> Result<(i8, Vec<u8>), Error> {
+fn read_ext_body<R: RmpRead>(rd: &mut R, len: usize, depth: u16) -> Result<(i8, Vec<u8>), Error<R::Error>> {
     let depth = super::decrement_depth(depth)?;
 
     let ty = rd.read_data_i8()?;
@@ -80,7 +113,7 @@ fn read_ext_body<R: Read>(rd: &mut R, len: usize, depth: u16) -> Result<(i8, Vec
 }
 
 #[inline(never)]
-fn read_value_inner<R>(rd: &mut R, depth: u16) -> Result<Value, Error> where R: Read {
+fn read_value_inner<R>(rd: &mut R, depth: u16) -> Result<Value, Error<R::Error>> where R: RmpRead {
     let depth = super::decrement_depth(depth)?;
     let val = match read_marker(rd)? {
         Marker::Null => Value::Nil,
@@ -211,6 +244,7 @@ fn read_value_inner<R>(rd: &mut R, depth: u16) -> Result<Value, Error> where R: 
 /// # Errors
 ///
 /// This function will return [`Error`] on any I/O error while either reading or decoding a [`Value`].
+#[cfg(feature = "std")]
 /// All instances of [`ErrorKind::Interrupted`](io::ErrorKind) are handled by this function and the
 /// underlying operation is retried.
 ///
@@ -218,8 +252,8 @@ fn read_value_inner<R>(rd: &mut R, depth: u16) -> Result<Value, Error> where R: 
 /// [`MAX_DEPTH`](super::MAX_DEPTH) times. To configure the maximum recursion depth, use
 /// [`read_value_with_max_depth`] instead.
 #[inline]
-pub fn read_value<R>(rd: &mut R) -> Result<Value, Error>
-    where R: Read
+pub fn read_value<R>(rd: &mut R) -> Result<Value, Error<R::Error>>
+    where R: RmpRead
 {
     read_value_inner(rd, super::MAX_DEPTH as _)
 }
@@ -229,6 +263,7 @@ pub fn read_value<R>(rd: &mut R) -> Result<Value, Error>
 /// # Errors
 ///
 /// This function will return [`Error`] on any I/O error while either reading or decoding a [`Value`].
+#[cfg(feature = "std")]
 /// All instances of [`ErrorKind::Interrupted`](io::ErrorKind) are handled by this function and the
 /// underlying operation is retried.
 ///
@@ -236,8 +271,8 @@ pub fn read_value<R>(rd: &mut R) -> Result<Value, Error>
 /// `max_depth` times. If the default [`MAX_DEPTH`](super::MAX_DEPTH) is sufficient or you do not
 /// need recursion depth checking for your data, consider using [`read_value`] instead.
 #[inline]
-pub fn read_value_with_max_depth<R>(rd: &mut R, max_depth: usize) -> Result<Value, Error>
-    where R: Read
+pub fn read_value_with_max_depth<R>(rd: &mut R, max_depth: usize) -> Result<Value, Error<R::Error>>
+    where R: RmpRead
 {
     read_value_inner(rd, max_depth.min(u16::MAX as usize) as u16)
 }

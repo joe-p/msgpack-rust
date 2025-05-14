@@ -1,12 +1,54 @@
 //! Contains Value and `ValueRef` structs and its conversion traits.
 #![forbid(unsafe_code)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
+// Import core crate explicitly
+#[cfg(not(feature = "std"))]
+extern crate core;
+
+// When not using std, we need alloc for String, Vec, etc.
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+// Cow imports
+#[cfg(feature = "std")]
 use std::borrow::Cow;
+#[cfg(not(feature = "std"))]
+use alloc::borrow::Cow;
+
+// Convert/TryFrom imports
+#[cfg(feature = "std")]
 use std::convert::TryFrom;
+#[cfg(not(feature = "std"))]
+use core::convert::TryFrom;
+
+// Formatting imports
+#[cfg(feature = "std")]
 use std::fmt::{self, Debug, Display};
+#[cfg(not(feature = "std"))]
+use core::fmt::{self, Debug, Display};
+
+// Iterator imports
+#[cfg(feature = "std")]
 use std::iter::FromIterator;
+#[cfg(not(feature = "std"))]
+use core::iter::FromIterator;
+
+// Index imports
+#[cfg(feature = "std")]
 use std::ops::Index;
+#[cfg(not(feature = "std"))]
+use core::ops::Index;
+
+// UTF8 Error imports
+#[cfg(feature = "std")]
 use std::str::Utf8Error;
+#[cfg(not(feature = "std"))]
+use core::str::Utf8Error;
+
+// Common imports from alloc when not using std
+#[cfg(not(feature = "std"))]
+use alloc::{string::String, vec::Vec, format};
 
 pub mod decode;
 pub mod encode;
@@ -51,7 +93,7 @@ impl Integer {
     #[must_use]
     pub const fn is_i64(&self) -> bool {
         match self.n {
-            IntPriv::PosInt(n) => n <= std::i64::MAX as u64,
+            IntPriv::PosInt(n) => n <= core::primitive::i64::MAX as u64,
             IntPriv::NegInt(..) => true,
         }
     }
