@@ -4,10 +4,10 @@ use serde::ser::{self, SerializeMap, SerializeSeq, SerializeStruct, SerializeTup
 use serde::Serialize;
 use serde_bytes::Bytes;
 
-use crate::{IntPriv, Integer, Value};
+use crate::{IntPriv, Integer, Value, Utf8String};
 
 use super::Error;
-use crate::MSGPACK_EXT_STRUCT_NAME;
+use crate::{MSGPACK_EXT_STRUCT_NAME, MSGPACK_RAW_STR_STRUCT_NAME};
 
 impl Serialize for Value {
     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
@@ -24,7 +24,10 @@ impl Serialize for Value {
             Self::F64(v) => s.serialize_f64(v),
             Self::String(ref v) => match v.s {
                 Ok(ref v) => s.serialize_str(v),
-                Err(ref v) => Bytes::new(&v.0[..]).serialize(s),
+                Err(ref v) => {
+                    // Use the raw string mechanism to preserve non-UTF8 bytes as string type
+                    s.serialize_newtype_struct(MSGPACK_RAW_STR_STRUCT_NAME, &Bytes::new(&v.0[..]))
+                }
             },
             Self::Binary(ref v) => Bytes::new(&v[..]).serialize(s),
             Self::Array(ref array) => {
@@ -185,6 +188,11 @@ impl ser::Serializer for Serializer {
             value.serialize(&mut ext_se)?;
 
             return ext_se.value();
+        }
+
+        if name == MSGPACK_RAW_STR_STRUCT_NAME {
+            // Serialize raw bytes as MessagePack string (Value::String) without UTF-8 validation
+            return value.serialize(RawStrSerializer);
         }
 
         to_value(value)
@@ -645,6 +653,176 @@ impl ExtFieldSerializer {
             (None, Some(_)) => Err(<Error as ser::Error>::custom("expected i8 and bytes")),
             (None, None) => Err(<Error as ser::Error>::custom("expected i8 and bytes")),
         }
+    }
+}
+
+/// Serializer for raw bytes as MessagePack string (rmpv::Value::String) without UTF-8 validation
+pub struct RawStrSerializer;
+
+impl ser::Serializer for RawStrSerializer {
+    type Error = Error;
+    type Ok = Value;
+    type SerializeMap = ser::Impossible<Value, Error>;
+    type SerializeSeq = ser::Impossible<Value, Error>;
+    type SerializeStruct = ser::Impossible<Value, Error>;
+    type SerializeStructVariant = ser::Impossible<Value, Error>;
+    type SerializeTuple = ser::Impossible<Value, Error>;
+    type SerializeTupleStruct = ser::Impossible<Value, Error>;
+    type SerializeTupleVariant = ser::Impossible<Value, Error>;
+
+    #[inline]
+    fn serialize_bytes(self, val: &[u8]) -> Result<Self::Ok, Self::Error> {
+        // Create a Utf8String from raw bytes without UTF-8 validation
+        // by wrapping them in an Err variant
+        let utf8_err = std::str::from_utf8(val).err();
+        let utf8_string = if let Some(err) = utf8_err {
+            Utf8String { s: Err((val.to_vec(), err)) }
+        } else {
+            // If it happens to be valid UTF-8, use the Ok variant
+            Utf8String { s: Ok(std::str::from_utf8(val).unwrap().to_string()) }
+        };
+        Ok(Value::String(utf8_string))
+    }
+
+    #[inline]
+    fn serialize_bool(self, _val: bool) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_i8(self, _val: i8) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_i16(self, _val: i16) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_i32(self, _val: i32) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_i64(self, _val: i64) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_u8(self, _val: u8) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_u16(self, _val: u16) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_u32(self, _val: u32) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_u64(self, _val: u64) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_f32(self, _val: f32) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_f64(self, _val: f64) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_char(self, _val: char) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_str(self, _val: &str) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_unit_variant(self, _name: &'static str, _idx: u32, _variant: &'static str) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_newtype_struct<T>(self, _name: &'static str, _value: &T) -> Result<Self::Ok, Self::Error>
+        where T: Serialize + ?Sized
+    {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_newtype_variant<T>(self, _name: &'static str, _idx: u32, _variant: &'static str, _value: &T) -> Result<Self::Ok, Self::Error>
+        where T: Serialize + ?Sized
+    {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_some<T>(self, _value: &T) -> Result<Self::Ok, Self::Error>
+        where T: Serialize + ?Sized
+    {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple, Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_tuple_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeTupleStruct, Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_tuple_variant(self, _name: &'static str, _idx: u32, _variant: &'static str, _len: usize) -> Result<Self::SerializeTupleVariant, Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct, Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_struct_variant(self, _name: &'static str, _idx: u32, _variant: &'static str, _len: usize) -> Result<Self::SerializeStructVariant, Error> {
+        Err(<Error as ser::Error>::custom("expected bytes for raw string"))
     }
 }
 

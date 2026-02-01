@@ -42,6 +42,28 @@ enum IntPriv {
 /// ```
 pub const MSGPACK_EXT_STRUCT_NAME: &str = "_ExtStruct";
 
+/// Name of Serde newtype struct to serialize raw bytes as MessagePack string without UTF-8 validation.
+///
+/// This allows preserving non-UTF-8 data as MessagePack string type (rather than binary type).
+/// Use this when you need byte-identical round-trip encoding where the MessagePack type matters.
+///
+/// Example:
+///
+/// ```ignore
+/// impl Serialize for NonUtf8String {
+///     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+///     where
+///         S: Serializer,
+///     {
+///         serializer.serialize_newtype_struct(
+///             rmpv::MSGPACK_RAW_STR_STRUCT_NAME,
+///             serde_bytes::Bytes::new(&self.0)
+///         )
+///     }
+/// }
+/// ```
+pub const MSGPACK_RAW_STR_STRUCT_NAME: &str = "_RawStrStruct";
+
 /// Represents a MessagePack integer, whether signed or unsigned.
 ///
 /// A `Value` or `ValueRef` that contains integer can be constructed using `From` trait.

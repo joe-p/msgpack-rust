@@ -2,7 +2,7 @@ use std::io::Write;
 
 use rmp::encode::{
     write_array_len, write_bin, write_bool, write_ext_meta, write_f32, write_f64, write_map_len,
-    write_nil, write_sint, write_str, write_uint,
+    write_nil, write_sint, write_str, write_str_bytes, write_uint,
 };
 
 use super::Error;
@@ -52,7 +52,7 @@ pub fn write_value_ref<W>(wr: &mut W, val: &ValueRef<'_>) -> Result<(), Error>
         },
         ValueRef::String(Utf8StringRef { s }) => match s {
             Ok(val) => write_str(wr, val)?,
-            Err(err) => write_bin(wr, err.0)?,
+            Err(err) => write_str_bytes(wr, err.0)?,
         },
         ValueRef::Binary(val) => {
             write_bin(wr, val)?;
