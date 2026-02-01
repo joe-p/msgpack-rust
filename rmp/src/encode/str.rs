@@ -45,3 +45,18 @@ pub fn write_str<W: RmpWrite>(wr: &mut W, data: &str) -> Result<(), ValueWriteEr
     write_str_len(wr, data.len() as u32)?;
     wr.write_bytes(data.as_bytes()).map_err(ValueWriteError::InvalidDataWrite)
 }
+
+/// Encodes and attempts to write raw bytes as a MessagePack string without UTF-8 validation.
+///
+/// This function writes the string marker and length, followed by the raw bytes, without
+/// validating that the bytes form valid UTF-8. Use this only when you need to preserve
+/// non-UTF-8 data as a MessagePack string type (rather than binary type).
+///
+/// # Errors
+///
+/// This function will return `ValueWriteError` on any I/O error occurred while writing either the
+/// marker or the data.
+pub fn write_str_bytes<W: RmpWrite>(wr: &mut W, bytes: &[u8]) -> Result<(), ValueWriteError<W::Error>> {
+    write_str_len(wr, bytes.len() as u32)?;
+    wr.write_bytes(bytes).map_err(ValueWriteError::InvalidDataWrite)
+}

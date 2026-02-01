@@ -20,7 +20,7 @@ use rmp::{encode, Marker};
 use crate::config::{
     BinaryConfig, DefaultConfig, HumanReadableConfig, RuntimeConfig, SerializerConfig, StructMapConfig, StructTupleConfig
 };
-use crate::MSGPACK_EXT_STRUCT_NAME;
+use crate::{MSGPACK_EXT_STRUCT_NAME, MSGPACK_RAW_STR_STRUCT_NAME};
 
 /// This type represents all possible errors that can occur when serializing or
 /// deserializing MessagePack data.
@@ -686,6 +686,12 @@ where
             return ext_se.end();
         }
 
+        if name == MSGPACK_RAW_STR_STRUCT_NAME {
+            // Serialize raw bytes as MessagePack string without UTF-8 validation
+            let raw_str_se = RawStrSerializer { wr: &mut self.wr };
+            return value.serialize(raw_str_se);
+        }
+
         // Encode as if it's inner type.
         value.serialize(self)
     }
@@ -1188,6 +1194,171 @@ impl<'a, W: Write + 'a> ExtFieldSerializer<'a, W> {
         } else {
             Err(Error::InvalidDataModel("expected i8 and bytes"))
         }
+    }
+}
+
+/// Serializer for raw bytes as MessagePack string without UTF-8 validation
+#[derive(Debug)]
+struct RawStrSerializer<'a, W> {
+    wr: &'a mut W,
+}
+
+impl<'a, W: Write + 'a> serde::Serializer for RawStrSerializer<'a, W> {
+    type Error = Error;
+    type Ok = ();
+    type SerializeMap = serde::ser::Impossible<(), Error>;
+    type SerializeSeq = serde::ser::Impossible<(), Error>;
+    type SerializeStruct = serde::ser::Impossible<(), Error>;
+    type SerializeStructVariant = serde::ser::Impossible<(), Error>;
+    type SerializeTuple = serde::ser::Impossible<(), Error>;
+    type SerializeTupleStruct = serde::ser::Impossible<(), Error>;
+    type SerializeTupleVariant = serde::ser::Impossible<(), Error>;
+
+    #[inline]
+    fn serialize_bytes(self, val: &[u8]) -> Result<Self::Ok, Self::Error> {
+        encode::write_str_bytes(self.wr, val)?;
+        Ok(())
+    }
+
+    #[inline]
+    fn serialize_bool(self, _val: bool) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_i8(self, _val: i8) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_i16(self, _val: i16) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_i32(self, _val: i32) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_i64(self, _val: i64) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_u8(self, _val: u8) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_u16(self, _val: u16) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_u32(self, _val: u32) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_u64(self, _val: u64) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_f32(self, _val: f32) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_f64(self, _val: f64) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_char(self, _val: char) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_str(self, _val: &str) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_unit_variant(self, _name: &'static str, _idx: u32, _variant: &'static str) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_newtype_struct<T>(self, _name: &'static str, _value: &T) -> Result<Self::Ok, Self::Error>
+        where T: Serialize + ?Sized
+    {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_newtype_variant<T>(self, _name: &'static str, _idx: u32, _variant: &'static str, _value: &T) -> Result<Self::Ok, Self::Error>
+        where T: Serialize + ?Sized
+    {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_some<T>(self, _value: &T) -> Result<Self::Ok, Self::Error>
+        where T: Serialize + ?Sized
+    {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple, Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_tuple_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeTupleStruct, Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_tuple_variant(self, _name: &'static str, _idx: u32, _variant: &'static str, _len: usize) -> Result<Self::SerializeTupleVariant, Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct, Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
+    }
+
+    #[inline]
+    fn serialize_struct_variant(self, _name: &'static str, _idx: u32, _variant: &'static str, _len: usize) -> Result<Self::SerializeStructVariant, Error> {
+        Err(Error::InvalidDataModel("expected bytes for raw string"))
     }
 }
 
