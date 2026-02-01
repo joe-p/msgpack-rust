@@ -1,8 +1,7 @@
 use std::io::Write;
 
 use rmp::encode::{
-    write_array_len, write_bin, write_bool, write_ext_meta, write_f32, write_f64, write_map_len,
-    write_nil, write_sint, write_str, write_uint,
+    write_array_len, write_bin, write_bool, write_ext_meta, write_f32, write_f64, write_map_len, write_nil, write_sint, write_str, write_str_bytes, write_uint
 };
 
 use super::Error;
@@ -40,7 +39,7 @@ pub fn write_value<W>(wr: &mut W, val: &Value) -> Result<(), Error>
         },
         Value::String(Utf8String { ref s }) => match *s {
             Ok(ref val) => write_str(wr, val)?,
-            Err(ref err) => write_bin(wr, &err.0)?,
+            Err(ref err) => write_str_bytes(wr, &err.0)?,
         },
         Value::Binary(ref val) => {
             write_bin(wr, val)?;

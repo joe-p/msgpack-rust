@@ -45,3 +45,8 @@ pub fn write_str<W: RmpWrite>(wr: &mut W, data: &str) -> Result<(), ValueWriteEr
     write_str_len(wr, data.len() as u32)?;
     wr.write_bytes(data.as_bytes()).map_err(ValueWriteError::InvalidDataWrite)
 }
+
+pub fn write_str_bytes<W: RmpWrite>(wr: &mut W, data: &[u8]) -> Result<(), ValueWriteError<W::Error>> {
+    write_str_len(wr, data.len() as u32)?;
+    wr.write_bytes(data).map_err(ValueWriteError::InvalidDataWrite)
+}
