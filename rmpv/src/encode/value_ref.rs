@@ -2,7 +2,7 @@ use std::io::Write;
 
 use rmp::encode::{
     write_array_len, write_bin, write_bool, write_ext_meta, write_f32, write_f64, write_map_len,
-    write_nil, write_sint, write_str, write_uint,
+    write_nil, write_sint, write_str, write_str_len, write_uint,
 };
 
 use super::Error;
@@ -56,6 +56,10 @@ pub fn write_value_ref<W>(wr: &mut W, val: &ValueRef<'_>) -> Result<(), Error>
         },
         ValueRef::Binary(val) => {
             write_bin(wr, val)?;
+        },
+        ValueRef::StringBytes(val) => {
+            write_str_len(wr, val.len() as u32)?;
+            wr.write_all(val).map_err(Error::InvalidDataWrite)?;
         },
         ValueRef::Array(ref vec) => {
             write_array_len(wr, vec.len() as u32)?;

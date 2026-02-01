@@ -325,6 +325,10 @@ impl<'de> Deserializer<'de> for Value {
                 Err(v) => visitor.visit_byte_buf(v.0),
             },
             Self::Binary(v) => visitor.visit_byte_buf(v),
+            Self::StringBytes(v) => {
+                // StringBytes is bytes that were encoded as str - deserialize as bytes
+                visitor.visit_byte_buf(v)
+            },
             Self::Array(v) => {
                 let len = v.len();
                 let mut de = SeqDeserializer::new(v.into_iter());
@@ -418,6 +422,10 @@ impl<'de> Deserializer<'de> for ValueRef<'de> {
                 Err(v) => visitor.visit_borrowed_bytes(v.0),
             },
             ValueRef::Binary(v) => visitor.visit_borrowed_bytes(v),
+            ValueRef::StringBytes(v) => {
+                // StringBytes is bytes that were encoded as str - deserialize as bytes
+                visitor.visit_borrowed_bytes(v)
+            },
             ValueRef::Array(v) => {
                 let len = v.len();
                 let mut de = SeqDeserializer::new(v.into_iter());
@@ -511,6 +519,10 @@ impl<'de> Deserializer<'de> for &'de ValueRef<'de> {
                 Err(v) => visitor.visit_borrowed_bytes(v.0),
             },
             ValueRef::Binary(v) => visitor.visit_borrowed_bytes(v),
+            ValueRef::StringBytes(v) => {
+                // StringBytes is bytes that were encoded as str - deserialize as bytes
+                visitor.visit_borrowed_bytes(v)
+            },
             ValueRef::Array(ref v) => {
                 let len = v.len();
                 let mut de = SeqDeserializer::new(v.iter());

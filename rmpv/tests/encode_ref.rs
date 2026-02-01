@@ -126,3 +126,51 @@ fn pass_pack_ext() {
         &ValueRef::Ext(16, &[0x01, 0x02, 0x03]),
     );
 }
+
+#[test]
+fn pass_pack_string_bytes_short() {
+    // StringBytes should encode as str type (fixstr for short strings)
+    // "hello" as bytes: [0x68, 0x65, 0x6c, 0x6c, 0x6f]
+    // fixstr marker for len 5: 0xa5
+    check_packed_eq(
+        &vec![0xa5, 0x68, 0x65, 0x6c, 0x6c, 0x6f],
+        &ValueRef::StringBytes(b"hello"),
+    );
+}
+
+#[test]
+fn pass_pack_string_bytes_with_non_utf8() {
+    // StringBytes can contain non-UTF8 bytes but still encode as str type
+    // Bytes [0xff, 0xfe] are not valid UTF-8
+    // fixstr marker for len 2: 0xa2
+    check_packed_eq(
+        &vec![0xa2, 0xff, 0xfe],
+        &ValueRef::StringBytes(&[0xff, 0xfe]),
+    );
+}
+
+#[test]
+fn pass_pack_string_bytes_empty() {
+    // Empty StringBytes should encode as empty fixstr (0xa0)
+    check_packed_eq(
+        &vec![0xa0],
+        &ValueRef::StringBytes(&[]),
+    );
+}
+
+#[test]
+fn pass_pack_string_bytes_vs_binary() {
+    // Verify StringBytes produces different encoding than Binary for the same data
+    let data = b"test";
+    
+    let mut str_buf = Vec::new();
+    write_value_ref(&mut str_buf, &ValueRef::StringBytes(data)).unwrap();
+    
+    let mut bin_buf = Vec::new();
+    write_value_ref(&mut bin_buf, &ValueRef::Binary(data)).unwrap();
+    
+    // StringBytes: fixstr marker 0xa4 + "test"
+    assert_eq!(vec![0xa4, 0x74, 0x65, 0x73, 0x74], str_buf);
+    // Binary: bin8 marker 0xc4 + len 0x04 + "test"
+    assert_eq!(vec![0xc4, 0x04, 0x74, 0x65, 0x73, 0x74], bin_buf);
+}

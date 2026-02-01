@@ -195,3 +195,31 @@ fn try_from_val() {
     assert_eq!(String::from("spook"), TryInto::<String>::try_into(Value::from("spook")).unwrap());
     assert_eq!(vec![0], TryInto::<Vec<u8>>::try_into(Value::Binary(vec![0u8])).unwrap());
 }
+
+#[test]
+fn display_string_bytes() {
+    // StringBytes displays the same as Binary (as a byte array debug format)
+    assert_eq!("[104, 101, 108, 108, 111]", format!("{}", Value::StringBytes(b"hello".to_vec())));
+    assert_eq!("[255, 254]", format!("{}", Value::StringBytes(vec![0xff, 0xfe])));
+    assert_eq!("[]", format!("{}", Value::StringBytes(vec![])));
+}
+
+#[test]
+fn string_bytes_as_ref() {
+    use rmpv::ValueRef;
+    
+    let val = Value::StringBytes(b"hello".to_vec());
+    let val_ref = val.as_ref();
+    
+    assert_eq!(ValueRef::StringBytes(b"hello"), val_ref);
+}
+
+#[test]
+fn string_bytes_to_owned() {
+    use rmpv::ValueRef;
+    
+    let val_ref = ValueRef::StringBytes(b"hello");
+    let val = val_ref.to_owned();
+    
+    assert_eq!(Value::StringBytes(b"hello".to_vec()), val);
+}

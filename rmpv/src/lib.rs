@@ -466,6 +466,18 @@ pub enum Value {
     String(Utf8String),
     /// Binary extending Raw type represents a byte array.
     Binary(Vec<u8>),
+    /// Byte array that will be encoded as MessagePack str type.
+    ///
+    /// This is useful for interoperability with systems that expect string encoding
+    /// for binary data (e.g., msgpack implementations that don't support the bin type,
+    /// or when you need to treat byte sequences as strings).
+    ///
+    /// Unlike `String`, this variant does not require valid UTF-8 - the bytes are
+    /// written directly with str type markers.
+    ///
+    /// **Warning**: MessagePack str type is meant for UTF-8 strings, so use this
+    /// only when you know the bytes are valid UTF-8 or the receiver doesn't validate.
+    StringBytes(Vec<u8>),
     /// Array represents a sequence of objects.
     Array(Vec<Self>),
     /// Map represents key-value pairs of objects.
@@ -510,6 +522,7 @@ impl Value {
             Self::F64(val) => ValueRef::F64(val),
             Self::String(ref val) => ValueRef::String(val.as_ref()),
             Self::Binary(ref val) => ValueRef::Binary(val.as_slice()),
+            Self::StringBytes(ref val) => ValueRef::StringBytes(val.as_slice()),
             Self::Array(ref val) => {
                 ValueRef::Array(val.iter().map(|v| v.as_ref()).collect())
             }
@@ -1202,6 +1215,7 @@ impl Display for Value {
             Self::F64(val) => Display::fmt(&val, f),
             Self::String(ref val) => Display::fmt(&val, f),
             Self::Binary(ref val) => Debug::fmt(&val, f),
+            Self::StringBytes(ref val) => Debug::fmt(&val, f),
             Self::Array(ref vec) => {
                 // TODO: This can be slower than naive implementation. Need benchmarks for more
                 // information.
@@ -1255,6 +1269,10 @@ pub enum ValueRef<'a> {
     String(Utf8StringRef<'a>),
     /// Binary extending Raw type represents a byte array.
     Binary(&'a [u8]),
+    /// Byte array that will be encoded as MessagePack str type.
+    ///
+    /// See [`Value::StringBytes`] for more details.
+    StringBytes(&'a [u8]),
     /// Array represents a sequence of objects.
     Array(Vec<Self>),
     /// Map represents key-value pairs of objects.
@@ -1301,6 +1319,7 @@ impl ValueRef<'_> {
             ValueRef::F64(val) => Value::F64(val),
             ValueRef::String(val) => Value::String(val.into()),
             ValueRef::Binary(val) => Value::Binary(val.to_vec()),
+            ValueRef::StringBytes(val) => Value::StringBytes(val.to_vec()),
             ValueRef::Array(ref val) => {
                 Value::Array(val.iter().map(|v| v.to_owned()).collect())
             }
@@ -1552,6 +1571,7 @@ impl Display for ValueRef<'_> {
             ValueRef::F64(val) => Display::fmt(&val, f),
             ValueRef::String(ref val) => Display::fmt(&val, f),
             ValueRef::Binary(val) => Debug::fmt(&&val, f),
+            ValueRef::StringBytes(val) => Debug::fmt(&&val, f),
             ValueRef::Array(ref vec) => {
                 let res = vec.iter()
                     .map(|val| format!("{val}"))

@@ -268,3 +268,64 @@ fn pass_ext_struct_to_value() {
         to_value(ExtStruct((5, ByteBuf::from(vec![10])))).unwrap()
     );
 }
+
+#[test]
+fn pass_string_bytes() {
+    // StringBytes encodes as str type (fixstr for short strings)
+    // "hello" as bytes with fixstr marker 0xa5
+    let mut buf = Vec::new();
+    encode::write_value(&mut buf, &Value::StringBytes(b"hello".to_vec())).unwrap();
+    assert_eq!(&[0xa5, 0x68, 0x65, 0x6c, 0x6c, 0x6f], &buf[..]);
+}
+
+#[test]
+fn pass_string_bytes_non_utf8() {
+    // StringBytes can contain non-UTF8 bytes but still encode as str type
+    let mut buf = Vec::new();
+    encode::write_value(&mut buf, &Value::StringBytes(vec![0xff, 0xfe])).unwrap();
+    // fixstr marker for len 2: 0xa2
+    assert_eq!(&[0xa2, 0xff, 0xfe], &buf[..]);
+}
+
+#[test]
+fn pass_string_bytes_empty() {
+    // Empty StringBytes encodes as empty fixstr
+    let mut buf = Vec::new();
+    encode::write_value(&mut buf, &Value::StringBytes(vec![])).unwrap();
+    assert_eq!(&[0xa0], &buf[..]);
+}
+
+#[test]
+fn pass_string_bytes_vs_binary_encoding() {
+    // Verify StringBytes produces str markers while Binary produces bin markers
+    let data = b"test".to_vec();
+    
+    let mut str_buf = Vec::new();
+    encode::write_value(&mut str_buf, &Value::StringBytes(data.clone())).unwrap();
+    
+    let mut bin_buf = Vec::new();
+    encode::write_value(&mut bin_buf, &Value::Binary(data)).unwrap();
+    
+    // StringBytes: fixstr marker 0xa4 + "test"
+    assert_eq!(vec![0xa4, 0x74, 0x65, 0x73, 0x74], str_buf);
+    // Binary: bin8 marker 0xc4 + len 0x04 + "test"
+    assert_eq!(vec![0xc4, 0x04, 0x74, 0x65, 0x73, 0x74], bin_buf);
+}
+
+#[test]
+fn pass_string_bytes_in_map() {
+    // Test StringBytes as a value in a map
+    let val = Value::Map(vec![
+        (Value::from("binary_field"), Value::Binary(b"bin".to_vec())),
+        (Value::from("string_bytes_field"), Value::StringBytes(b"str".to_vec())),
+    ]);
+    
+    let mut buf = Vec::new();
+    encode::write_value(&mut buf, &val).unwrap();
+    
+    // The map should encode with:
+    // - binary_field value as bin8 type
+    // - string_bytes_field value as fixstr type
+    assert!(buf.contains(&0xc4)); // bin8 marker
+    assert!(buf.contains(&0xa3)); // fixstr(3) marker for "str"
+}

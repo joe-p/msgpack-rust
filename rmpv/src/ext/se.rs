@@ -27,6 +27,21 @@ impl Serialize for Value {
                 Err(ref v) => Bytes::new(&v.0[..]).serialize(s),
             },
             Self::Binary(ref v) => Bytes::new(&v[..]).serialize(s),
+            Self::StringBytes(ref v) => {
+                // Serialize as str - the rmp-serde serializer will write this as msgpack str type
+                // For non-UTF8 bytes, we use serialize_str with lossy conversion, or serialize_bytes
+                // with AsString mode configured on the serializer.
+                // The safest approach that works with any serializer is to try UTF-8 first.
+                match std::str::from_utf8(v) {
+                    Ok(str_val) => s.serialize_str(str_val),
+                    Err(_) => {
+                        // For invalid UTF-8, we serialize as bytes.
+                        // If the serializer is configured with BytesMode::AsString, it will
+                        // write this as str type. Otherwise, it will write as bin type.
+                        Bytes::new(&v[..]).serialize(s)
+                    }
+                }
+            },
             Self::Array(ref array) => {
                 let mut state = s.serialize_seq(Some(array.len()))?;
                 for item in array {
